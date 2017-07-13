@@ -13,4 +13,4 @@ security:
             anonymous: ~
 
 staffim_rollbar:
-    access_token: example_token
+    access_token: example_token_32_characters_long

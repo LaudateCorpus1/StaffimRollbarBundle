@@ -4,7 +4,8 @@ namespace Staffim\RollbarBundle;
 
 use Exception;
 use ErrorException;
-use RollbarNotifier;
+use Rollbar\Payload\Level;
+use Rollbar\RollbarLogger;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Debug\Exception\FlattenException;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -12,9 +13,9 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 class RollbarReporter
 {
     /**
-     * @var \RollbarNotifier
+     * @var RollbarLogger
      */
-    private $rollbarNotifier;
+    private $rollbar;
 
     /**
      * @var \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface
@@ -44,7 +45,7 @@ class RollbarReporter
     /**
      * Constructor.
      *
-     * @param \RollbarNotifier $rollbarNotifier
+     * @param RollbarLogger $rollbar
      * @param \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage
      * @param \Staffim\RollbarBundle\ReportDecisionManager $reportDecisionManager
      * @param type $errorLevel
@@ -52,21 +53,21 @@ class RollbarReporter
      * @param array $scrubParameters
      */
     public function __construct(
-        RollbarNotifier $rollbarNotifier,
+        RollbarLogger $rollbar,
         TokenStorageInterface $tokenStorage,
         ReportDecisionManager $reportDecisionManager,
         $errorLevel = -1,
         array $scrubExceptions = array(),
         array $scrubParameters = array()
     ) {
-        $this->rollbarNotifier = $rollbarNotifier;
+        $this->rollbar = $rollbar;
         $this->tokenStorage = $tokenStorage;
         $this->reportDecisionManager = $reportDecisionManager;
         $this->scrubExceptions = $scrubExceptions;
         $this->scrubParameters = $scrubParameters;
         $this->errorLevel = $errorLevel;
 
-        $this->rollbarNotifier->person_fn = array($this, 'getUserData');
+        $this->rollbar->person_fn = array($this, 'getUserData');
     }
 
     /**
@@ -77,7 +78,7 @@ class RollbarReporter
      * @param array $extraData
      * @return string UUID of rollbar item
      */
-    public function report(Exception $exception, Request $request = null, $extraData = null)
+    public function report(Exception $exception, Request $request = null, $extraData = [])
     {
         if (false === $this->reportDecisionManager->decide($exception)) {
             return;
@@ -88,7 +89,7 @@ class RollbarReporter
         }
 
         $this->prepareGlobalServer($request);
-        $result = $this->rollbarNotifier->report_exception($exception, $extraData);
+        $result = $this->rollbar->log(Level::ERROR, $exception, $extraData);
         $this->cleanGlobalServer();
 
         return $result;
@@ -111,17 +112,21 @@ class RollbarReporter
             true === $this->reportDecisionManager->decide(new ErrorException($message, 0, $level, $file, $line))
         ) {
             $this->prepareGlobalServer($request);
-            $this->rollbarNotifier->report_php_error($level, $message, $file, $line);
+            $this->rollbar->log(Level::ERROR, $this->rollbar->getDataBuilder()->generateErrorWrapper($level, $message, $file, $line));
+
             $this->cleanGlobalServer();
         }
     }
 
     /**
      * Flush the rollbar Notifier.
+     *
+     * Do nothing silently to not cause backwards compatibility issues.
+     * Deprecated in rollbar 1.0.0.  See Rollbar::flush
      */
     public function flush()
     {
-        $this->rollbarNotifier->flush();
+
     }
 
     /**

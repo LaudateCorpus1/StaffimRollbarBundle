@@ -2,26 +2,25 @@
 
 namespace spec\Staffim\RollbarBundle;
 
+use Exception;
 use PhpSpec\ObjectBehavior;
 use Prophecy\Argument;
-use RollbarNotifier;
+use Rollbar\DataBuilder;
+use Rollbar\ErrorWrapper;
+use Rollbar\Payload\Level;
+use Rollbar\RollbarLogger;
+use Rollbar\Utilities;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Staffim\RollbarBundle\ReportDecisionManager;
 
 class RollbarReporterSpec extends ObjectBehavior
 {
-    /**
-     * @param \RollbarNotifier $rollbarNotifier
-     * @param \Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface $tokenStorage
-     * @param \Staffim\RollbarBundle\ReportDecisionManager $reportDecisionManager
-     */
     function let(
-        RollbarNotifier $rollbarNotifier,
+        RollbarLogger $rollbar,
         TokenStorageInterface $tokenStorage,
         ReportDecisionManager $reportDecisionManager
     ) {
-        $rollbarNotifier->flush()->willReturn(null);
-        $this->beConstructedWith($rollbarNotifier, $tokenStorage, $reportDecisionManager);
+        $this->beConstructedWith($rollbar, $tokenStorage, $reportDecisionManager);
     }
 
     function it_is_initializable()
@@ -29,34 +28,41 @@ class RollbarReporterSpec extends ObjectBehavior
         $this->shouldHaveType('Staffim\RollbarBundle\RollbarReporter');
     }
 
-    function it_should_report_exception_when_decision_true(\Exception $e, $reportDecisionManager, $rollbarNotifier)
+    function it_should_report_exception_when_decision_true(Exception $e, ReportDecisionManager $reportDecisionManager, RollbarLogger $rollbar)
     {
         $reportDecisionManager->decide($e)->willReturn(true);
-        $rollbarNotifier->report_exception($e, null)->shouldBeCalled();
+        $rollbar->log(Level::ERROR, $e, [])->shouldBeCalled();
         $this->report($e);
     }
 
-    function it_should_not_report_exception_when_decision_false(\Exception $e, $reportDecisionManager, $rollbarNotifier)
+    function it_should_not_report_exception_when_decision_false(Exception $e, ReportDecisionManager $reportDecisionManager, RollbarLogger $rollbar)
     {
         $reportDecisionManager->decide($e)->willReturn(false);
-        $rollbarNotifier->report_exception($e, null)->shouldNotBeCalled();
+        $rollbar->log(Level::ERROR, $e)->shouldNotBeCalled();
         $this->report($e);
     }
 
-    function it_should_report_exception_with_extra_data(\Exception $e, $reportDecisionManager, $rollbarNotifier)
+    function it_should_report_exception_with_extra_data(Exception $e, ReportDecisionManager $reportDecisionManager, RollbarLogger $rollbar)
     {
         $reportDecisionManager->decide($e)->willReturn(true);
         $extra = array('foo' => 'bar');
-        $rollbarNotifier->report_exception($e, $extra)->shouldBeCalled();
+        $rollbar->log(Level::ERROR, $e, $extra)->shouldBeCalled();
         $this->report($e, null, $extra);
     }
 
-    function it_should_report_error($reportDecisionManager, $rollbarNotifier)
+    function it_should_report_error(ReportDecisionManager $reportDecisionManager, RollbarLogger $rollbar, DataBuilder $dataBuilder)
     {
         $reportDecisionManager->decide(Argument::type('ErrorException'))->willReturn(true);
+
+        $message = 'Error';
         $file = __FILE__;
         $line = __LINE__;
-        $rollbarNotifier->report_php_error(E_USER_NOTICE, 'Error', $file, $line)->shouldBeCalled();
-        $this->reportError(E_USER_NOTICE, 'Error', $file, $line);
+        $wrapper = new ErrorWrapper(E_USER_NOTICE, $message, $file, $line, [], new Utilities());
+        $dataBuilder->generateErrorWrapper(E_USER_NOTICE, $message, $file, $line)->willReturn($wrapper);
+
+        $rollbar->getDataBuilder()->willReturn($dataBuilder);
+
+        $rollbar->log(Level::ERROR, $wrapper)->shouldBeCalled();
+        $this->reportError(E_USER_NOTICE, $message, $file, $line);
     }
 }

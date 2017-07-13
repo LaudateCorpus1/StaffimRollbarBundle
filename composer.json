@@ -6,7 +6,7 @@
     "type": "bundle",
     "authors": [{"name": "Vyacheslav Salakhutdinov", "email": "megazoll@gmail.com"}],
     "require": {
-        "rollbar/rollbar": "~0.15",
+        "rollbar/rollbar": "^1.0",
         "symfony/event-dispatcher": "~2.6|~3.0",
         "symfony/http-kernel": "~2.6|~3.0",
         "symfony/security-core": "~2.6|~3.0",
@@ -16,7 +16,8 @@
         "phpspec/phpspec": "~2.3",
         "phpunit/phpunit": "~4.8",
         "symfony/framework-bundle": "~2.6|~3.0",
-        "symfony/security-bundle": "~2.6|~3.0"
+        "symfony/security-bundle": "~2.6|~3.0",
+        "doctrine/common": "~2.7"
     },
     "autoload": {
         "psr-4": {

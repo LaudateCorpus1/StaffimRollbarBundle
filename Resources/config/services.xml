@@ -9,7 +9,7 @@
         <parameter key="staffim_rollbar.report_decision_manager.class">Staffim\RollbarBundle\ReportDecisionManager</parameter>
         <parameter key="staffim_rollbar.http_exception_voter.class">Staffim\RollbarBundle\Voter\HttpExceptionVoter</parameter>
         <parameter key="staffim_rollbar.same_referer_voter.class">Staffim\RollbarBundle\Voter\SameRefererVoter</parameter>
-        <parameter key="staffim_rollbar.rollbar.class">RollbarNotifier</parameter>
+        <parameter key="staffim_rollbar.rollbar.class">Rollbar\RollbarLogger</parameter>
         <parameter key="staffim_rollbar.rollbar.access_token"></parameter>
         <parameter key="staffim_rollbar.rollbar.error_level">-1</parameter>
     </parameters>
